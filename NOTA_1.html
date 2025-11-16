@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Kwitansi — Simpan & Edit (Offline)</title>
+  <style>
+    :root{--accent:#0b74da;--muted:#666}
+    body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;line-height:1.4;margin:16px;background:#f5f7fb;color:#222}
+    .container{max-width:980px;margin:0 auto;background:#fff;padding:20px;border-radius:12px;box-shadow:0 6px 20px rgba(2,12,34,.08)}
+    h1{margin:0 0 12px;font-size:20px}
+    .flex{display:flex;gap:12px}
+    .col{flex:1}
+    label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+    input[type=text], input[type=number], textarea, select, input[type=date]{width:100%;padding:8px;border:1px solid #e1e6ef;border-radius:8px}
+    textarea{min-height:60px}
+    .panel{padding:12px;border:1px dashed #e6eef9;border-radius:10px;background:#fbfdff}
+    table{width:100%;border-collapse:collapse;margin-top:8px}
+    table th, table td{padding:8px;border:1px solid #edf2f8;text-align:left;font-size:14px}
+    table th{background:#f3f8ff}
+    .btn{display:inline-block;padding:8px 12px;border-radius:8px;border:none;cursor:pointer}
+    .btn-primary{background:var(--accent);color:#fff}
+    .btn-ghost{background:transparent;border:1px solid #d6e6ff;color:var(--accent)}
+    .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+    .receipts-list{max-height:200px;overflow:auto;border:1px solid #eef3fb;padding:8px;border-radius:8px}
+    .receipt-item{padding:8px;border-radius:8px;margin-bottom:6px;background:#fff;border:1px solid #f1f6fc;display:flex;justify-content:space-between;align-items:center}
+    .small{font-size:13px;color:var(--muted)}
+    .totals{font-weight:600;font-size:18px}
+    .actions{display:flex;gap:6px}
+    .signature{height:60px;border-bottom:1px solid #ccc;margin-top:12px}
+    .footer-note{font-size:12px;color:var(--muted);margin-top:10px}
+    @media print{
+      body{background:#fff}
+      .container{box-shadow:none;border:none}
+      .controls, .receipts-list, input, select, button, .panel{display:none !important}
+      #preview{display:block !important;margin:0;padding:0;}
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Kwitansi</h1>
+    <div class="flex">
+      <div class="col" style="min-width:360px">
+        <div class="panel">
+          <div class="flex">
+            <div style="flex:1;min-width:160px">
+              <label>No. Kwitansi</label>
+              <input id="no" type="text" placeholder="AUTO atau isi manual">
+            </div>
+            <div style="width:170px">
+              <label>Tanggal</label>
+              <input id="tanggal" type="date">
+            </div>
+          </div>
+
+          <label>Terima dari</label>
+          <input id="terima_dari" type="text" placeholder="Nama orang / perusahaan">
+
+          <label>Untuk Pembayaran</label>
+          <textarea id="keterangan" placeholder="Mis. Pembelian ATK, Sewa, Dsb."></textarea>
+
+          <label>Metode Pembayaran</label>
+          <select id="metode">
+            <option value="Cash">Cash</option>
+            <option value="Transfer">Transfer</option>
+            <option value="Cek">Cek</option>
+            <option value="Lainnya">Lainnya</option>
+          </select>
+
+          <div style="margin-top:10px">
+            <label>Item Pembelian (tambahkan baris bila perlu)</label>
+            <table id="items-table">
+              <thead>
+                <tr><th style="width:6%">#</th><th>Deskripsi</th><th style="width:14%">Qty</th><th style="width:18%">Harga Satuan</th><th style="width:18%">Jumlah</th><th style="width:6%"></th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+            <div style="margin-top:8px">
+              <button class="btn btn-ghost" onclick="addItem()">+ Tambah Item</button>
+            </div>
+
+            <div style="display:flex;justify-content:flex-end;margin-top:12px;gap:16px;align-items:center">
+              <div class="small">Subtotal</div>
+              <div id="subtotal" class="totals">Rp 0</div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;margin-top:6px;gap:16px;align-items:center">
+              <div class="small">Pajak (%)</div>
+              <input id="pajak" type="number" min="0" value="0" style="width:80px;padding:6px;border-radius:6px;border:1px solid #e6eef9" onchange="recalc()">
+            </div>
+            <div style="display:flex;justify-content:flex-end;margin-top:6px;gap:16px;align-items:center">
+              <div class="small">Total</div>
+              <div id="total" class="totals">Rp 0</div>
+            </div>
+
+            <div style="margin-top:8px">
+              <label>Terbilang (Rupiah)</label>
+              <input id="terbilang" type="text" readonly>
+            </div>
+
+            <div style="margin-top:8px">
+              <label>Catatan</label>
+              <textarea id="notes" placeholder="Catatan tambahan (opsional)"></textarea>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="controls">
+          <button class="btn btn-primary" onclick="saveReceipt()">Simpan Kwitansi</button>
+          <button class="btn" onclick="resetForm()">Buat Baru</button>
+          <button class="btn" onclick="printReceipt()">Print / Export PDF</button>
+          <button class="btn btn-ghost" onclick="downloadJson()">Download JSON</button>
+        </div>
+
+      </div>
+
+      <div style="width:320px">
+        <label>Daftar Kwitansi Tersimpan</label>
+        <div class="receipts-list" id="receipts-list"></div>
+      </div>
+    </div>
+
+    <div style="margin-top:18px;padding:12px;border-radius:10px;border:1px solid #eef6ff;background:#fbfdff">
+      <h2 style="font-size:16px;margin:0 0 8px">Preview Kwitansi (untuk dicetak)</h2>
+      <div id="preview" style="background:#fff;padding:18px;border-radius:8px">
+        <!-- preview akan diisi lewat JS -->
+      </div>
+      <div class="footer-note">* Gunakan "Print / Export PDF" untuk menyimpan sebagai PDF. Data disimpan di browser (localStorage). Untuk backup, gunakan tombol Download JSON.</div>
+    </div>
+
+  </div>
+
+  <script>
+    // Simple storage key
+    const STORAGE_KEY = 'kwitansi_storage_v1';
+    let receipts = loadReceipts();
+    let editingId = null;
+
+    // Init
+    document.addEventListener('DOMContentLoaded', ()=>{
+      if(!document.getElementById('tanggal').value){
+        document.getElementById('tanggal').value = new Date().toISOString().slice(0,10);
+      }
+      addItem();
+      renderList();
+      renderPreview();
+    });
+
+    function loadReceipts(){
+      try{const raw = localStorage.getItem(STORAGE_KEY); return raw?JSON.parse(raw):[];}catch(e){return []}
+    }
+    function saveReceipts(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(receipts)); renderList(); }
+
+    function addItem(desc='', qty=1, price=0){
+      const tbody = document.querySelector('#items-table tbody');
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td class="small">${tbody.children.length+1}</td>
+        <td><input class="item-desc" type="text" value="${escapeHtml(desc)}" placeholder="Deskripsi"></td>
+        <td><input class="item-qty" type="number" min="1" value="${qty}"></td>
+        <td><input class="item-price" type="number" min="0" value="${price}"></td>
+        <td class="item-sum">Rp 0</td>
+        <td><button class="btn" onclick="this.closest('tr').remove();reindex();recalc()">x</button></td>
+      `;
+      tbody.appendChild(row);
+      attachItemEvents(row);
+      recalc();
+    }
+
+    function attachItemEvents(row){
+      row.querySelectorAll('input').forEach(el=>el.addEventListener('input', ()=>{updateRowSum(row);recalc()}));
+      updateRowSum(row);
+    }
+
+    function updateRowSum(row){
+      const qty = Number(row.querySelector('.item-qty').value||0);
+      const price = Number(row.querySelector('.item-price').value||0);
+      const sum = qty*price;
+      row.querySelector('.item-sum').textContent = formatRp(sum);
+    }
+
+    function reindex(){
+      document.querySelectorAll('#items-table tbody tr').forEach((r,i)=>r.children[0].textContent = i+1);
+    }
+
+    function recalc(){
+      let subtotal = 0;
+      document.querySelectorAll('#items-table tbody tr').forEach(row=>{
+        const qty = Number(row.querySelector('.item-qty').value||0);
+        const price = Number(row.querySelector('.item-price').value||0);
+        subtotal += qty*price;
+      });
+      document.getElementById('subtotal').textContent = formatRp(subtotal);
+      const pajakPct = Number(document.getElementById('pajak').value||0);
+      const total = Math.round(subtotal * (1 + pajakPct/100));
+      document.getElementById('total').textContent = formatRp(total);
+      document.getElementById('terbilang').value = terbilang(total) + ' rupiah';
+      renderPreview();
+    }
+
+    function formatRp(n){
+      return 'Rp ' + Number(n||0).toLocaleString('id-ID');
+    }
+
+    function saveReceipt(){
+      const data = collectForm();
+      if(!data.terima_dari){ alert('Isi kolom "Terima dari".'); return; }
+      if(!data.no) data.no = 'KW' + Date.now();
+      if(editingId){
+        const idx = receipts.findIndex(r=>r.id===editingId);
+        if(idx>-1) receipts[idx] = {...receipts[idx], ...data, updated: new Date().toISOString()};
+      } else {
+        receipts.unshift({...data, id: 'r_' + Date.now(), created: new Date().toISOString()});
+      }
+      saveReceipts();
+      resetForm();
+      alert('Kwitansi tersimpan');
+    }
+
+    function collectForm(){
+      const items = [];
+      document.querySelectorAll('#items-table tbody tr').forEach(row=>{
+        items.push({desc: row.querySelector('.item-desc').value, qty: Number(row.querySelector('.item-qty').value||0), price: Number(row.querySelector('.item-price').value||0)});
+      });
+      return {
+        no: document.getElementById('no').value.trim(),
+        tanggal: document.getElementById('tanggal').value,
+        terima_dari: document.getElementById('terima_dari').value.trim(),
+        keterangan: document.getElementById('keterangan').value.trim(),
+        metode: document.getElementById('metode').value,
+        items: items,
+        pajak: Number(document.getElementById('pajak').value||0),
+        notes: document.getElementById('notes').value.trim(),
+      };
+    }
+
+    function renderList(){
+      const box = document.getElementById('receipts-list'); box.innerHTML = '';
+      receipts.forEach(r=>{
+        const el = document.createElement('div'); el.className='receipt-item';
+        const left = document.createElement('div');
+        left.innerHTML = `<div style="font-weight:600">${escapeHtml(r.no||'(Tanpa No)')}</div><div class="small">${escapeHtml(r.terima_dari||'—')} — ${r.tanggal}</div>`;
+        const right = document.createElement('div'); right.className='actions';
+        const btnOpen = document.createElement('button'); btnOpen.className='btn'; btnOpen.textContent='Buka'; btnOpen.onclick = ()=>{loadToForm(r.id)};
+        const btnDel = document.createElement('button'); btnDel.className='btn'; btnDel.textContent='Hapus'; btnDel.onclick = ()=>{ if(confirm('Hapus kwitansi ini?')){ receipts = receipts.filter(x=>x.id!==r.id); saveReceipts(); }};
+        right.appendChild(btnOpen); right.appendChild(btnDel);
+        el.appendChild(left); el.appendChild(right);
+        box.appendChild(el);
+      });
+    }
+
+    function loadToForm(id){
+      const r = receipts.find(x=>x.id===id); if(!r) return;
+      editingId = r.id;
+      document.getElementById('no').value = r.no||'';
+      document.getElementById('tanggal').value = r.tanggal||'';
+      document.getElementById('terima_dari').value = r.terima_dari||'';
+      document.getElementById('keterangan').value = r.keterangan||'';
+      document.getElementById('metode').value = r.metode||'Cash';
+      document.getElementById('pajak').value = r.pajak||0;
+      document.getElementById('notes').value = r.notes||'';
+      const tbody = document.querySelector('#items-table tbody'); tbody.innerHTML='';
+      (r.items||[]).forEach(it=>addItem(it.desc,it.qty,it.price));
+      recalc();
+      window.scrollTo({top:0,behavior:'smooth'});
+    }
+
+    function resetForm(){
+      editingId = null;
+      document.getElementById('no').value='';
+      document.getElementById('terima_dari').value='';
+      document.getElementById('keterangan').value='';
+      document.getElementById('metode').value='Cash';
+      document.getElementById('pajak').value = 0;
+      document.getElementById('notes').value='';
+      const tbody = document.querySelector('#items-table tbody'); tbody.innerHTML=''; addItem(); recalc();
+    }
+
+    function renderPreview(){
+      const p = document.getElementById('preview');
+      const data = collectForm();
+      // calculate totals
+      let subtotal = 0; data.items.forEach(it=>subtotal += it.qty*it.price);
+      const total = Math.round(subtotal*(1 + (data.pajak||0)/100));
+      const html = `
+        <div style="max-width:700px;margin:0 auto;font-family:inherit">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-size:18px;font-weight:700">KWITANSI</div>
+              <div class="small">No: ${escapeHtml(data.no||'(otomatis)')}</div>
+            </div>
+            <div style="text-align:right">
+              <div class="small">Tanggal: ${escapeHtml(data.tanggal||'')}</div>
+              <div class="small">Metode: ${escapeHtml(data.metode||'')}</div>
+            </div>
+          </div>
+
+          <div style="margin-top:12px">
+            <div class="small">Telah terima dari:</div>
+            <div style="font-weight:600;font-size:16px">${escapeHtml(data.terima_dari||'')}</div>
+            <div style="margin-top:6px">Untuk pembayaran: ${escapeHtml(data.keterangan||'')}</div>
+          </div>
+
+          <table style="margin-top:12px">
+            <thead>
+              <tr><th style="width:6%">No</th><th>Deskripsi</th><th style="width:12%">Qty</th><th style="width:18%">Harga</th><th style="width:18%">Jumlah</th></tr>
+            </thead>
+            <tbody>
+              ${data.items.map((it,idx)=>`<tr><td>${idx+1}</td><td>${escapeHtml(it.desc||'')}</td><td>${it.qty}</td><td>${formatRpClient(it.price)}</td><td>${formatRpClient(it.qty*it.price)}</td></tr>`).join('')}
+            </tbody>
+          </table>
+
+          <div style="display:flex;justify-content:flex-end;margin-top:8px;gap:8px;align-items:center">
+            <div class="small">Subtotal</div>
+            <div style="font-weight:700">${formatRpClient(subtotal)}</div>
+          </div>
+          <div style="display:flex;justify-content:flex-end;margin-top:2px;gap:8px;align-items:center">
+            <div class="small">Pajak (${data.pajak||0}%)</div>
+            <div style="font-weight:700">${formatRpClient(Math.round(subtotal * ((data.pajak||0)/100)))}</div>
+          </div>
+          <div style="display:flex;justify-content:flex-end;margin-top:6px;gap:8px;align-items:center">
+            <div class="small">TOTAL</div>
+            <div style="font-weight:900;font-size:18px">${formatRpClient(total)}</div>
+          </div>
+
+          <div style="margin-top:10px">Terbilang: <i>${escapeHtml(terbilang(total))} rupiah</i></div>
+
+          <div style="display:flex;justify-content:space-between;margin-top:28px;align-items:flex-end">
+            <div style="width:60%">
+              <div class="small">Catatan:</div>
+              <div style="min-height:40px">${escapeHtml(data.notes||'')}</div>
+            </div>
+            <div style="text-align:center;width:35%">
+              <div class="small">Penerima</div>
+              <div class="signature"></div>
+              <div style="margin-top:6px">(___________________)</div>
+            </div>
+          </div>
+
+        </div>
+      `;
+      p.innerHTML = html;
+    }
+
+    function printReceipt(){
+      // render preview first
+      renderPreview();
+      // open a new window and print only the preview HTML
+      const content = document.getElementById('preview').innerHTML;
+      // collect minimal styles to keep print look consistent
+      const styles = `body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;margin:20px;color:#222} .small{font-size:13px;color:var(--muted)} table{width:100%;border-collapse:collapse;margin-top:12px} table th,table td{padding:8px;border:1px solid #edf2f8;text-align:left;font-size:14px} table th{background:#f3f8ff} .signature{height:60px;border-bottom:1px solid #ccc;margin-top:12px}`;
+      const win = window.open('','_blank');
+      if(!win){ alert('Popup diblokir. Izinkan popup untuk melakukan ekspor PDF/print.'); return; }
+      win.document.open();
+      win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Print Kwitansi</title><style>${styles}</style></head><body><div>${content}</div></body></html>`);
+      win.document.close();
+      // try to print after the new window loads resources
+      win.focus();
+      win.onload = function(){ try{ win.print(); win.close(); }catch(e){ /* ignore */ } };
+      // fallback: attempt print after short delay in case onload doesn't fire
+      setTimeout(()=>{ try{ win.print(); win.close(); }catch(e){} },700);
+    }
+
+    function downloadJson(){
+      const blob = new Blob([JSON.stringify(receipts,null,2)],{type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'kwitansi_backup.json'; a.click(); URL.revokeObjectURL(url);
+    }
+
+    function downloadData(obj, filename='data.json'){
+      const blob = new Blob([JSON.stringify(obj,null,2)],{type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);
+    }
+
+    // small helper functions
+    function escapeHtml(s){ return String(s||'').replace(/[&"'<>]/g, c=>({"&":"&amp;","\"":"&quot;","'":"&#39;","<":"&lt;",">":"&gt;"}[c])); }
+    function formatRpClient(n){ return 'Rp ' + (Number(n||0)).toLocaleString('id-ID'); }
+
+    // TERBILANG (Bahasa Indonesia) - simple implementation
+    function terbilang(n){
+      n = Math.floor(Number(n)||0);
+      if(n===0) return 'nol';
+      const satu = ['','satu','dua','tiga','empat','lima','enam','tujuh','delapan','sembilan','sepuluh','sebelas'];
+      function toWords(x){
+        x = Math.floor(x);
+        let str = '';
+        if(x < 12) str = satu[x];
+        else if(x < 20) str = toWords(x - 10) + ' belas';
+        else if(x < 100) str = toWords(Math.floor(x/10)) + ' puluh' + (x%10? ' ' + toWords(x%10):'');
+        else if(x < 200) str = 'seratus' + (x%100? ' ' + toWords(x%100):'');
+        else if(x < 1000) str = toWords(Math.floor(x/100)) + ' ratus' + (x%100? ' ' + toWords(x%100):'');
+        else if(x < 2000) str = 'seribu' + (x%1000? ' ' + toWords(x%1000):'');
+        else if(x < 1000000) str = toWords(Math.floor(x/1000)) + ' ribu' + (x%1000? ' ' + toWords(x%1000):'');
+        else if(x < 1000000000) str = toWords(Math.floor(x/1000000)) + ' juta' + (x%1000000? ' ' + toWords(x%1000000):'');
+        else if(x < 1000000000000) str = toWords(Math.floor(x/1000000000)) + ' miliar' + (x%1000000000? ' ' + toWords(x%1000000000):'');
+        else str = x.toString();
+        return str;
+      }
+      return toWords(n).trim();
+    }
+
+    // attach change handlers on dynamic table
+    document.querySelector('#items-table').addEventListener('input', function(e){ recalc(); });
+
+  </script>
+</body>
+</html>
