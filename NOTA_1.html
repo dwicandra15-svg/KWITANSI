@@ -30,9 +30,13 @@ table{width:100%;border-collapse:collapse;margin-top:8px}table th, table td{padd
 .modal .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
 </style>
 </head>
-<body>${invoiceKopOn?`<div style=\"text-align:center;font-weight:700;margin-bottom:12px\">${invoiceKopText}</div>`:''}${kopOn?`<div style=\"text-align:center;font-weight:700;margin-bottom:12px\">${kopText}</div>`:''}
-<!-- KOP OPTIONAL -->
-<div id="kop" style="display:none;text-align:center;margin-bottom:12px;font-weight:700;font-size:16px;line-height:1.4">CATERING ASIYA<br><span style="font-weight:400">Jl. RAJAWALI 1 KECAMATAN SAMPANG</span></div>
+<body>
+
+<!-- KOP OPTIONAL - POSISI DIPERBAIKI -->
+<div id="kop" style="display:none;text-align:center;margin-bottom:12px;font-weight:700;font-size:16px;line-height:1.6">
+  CATERING ASIYA<br>
+  <span style="font-weight:400;font-size:14px">Jl. RAJAWALI 1 KECAMATAN SAMPANG</span>
+</div>
 <select id="kop_toggle" style="margin-bottom:10px">
   <option value="off">Kop OFF</option>
   <option value="on">Kop ON</option>
@@ -102,7 +106,8 @@ table{width:100%;border-collapse:collapse;margin-top:8px}table th, table td{padd
 <!-- KOP INVOICE OPTIONAL -->
 <div style="margin-bottom:10px">
   <label style="font-weight:600">Kop Invoice</label>
-  <textarea id="invoice_kop" style="width:100%;min-height:60px;border:1px solid #ccc;border-radius:8px">CATERING ASIYA\nJl. RAJAWALI 1 KECAMATAN SAMPANG</textarea>
+  <textarea id="invoice_kop" style="width:100%;min-height:60px;border:1px solid #ccc;border-radius:8px">CATERING ASIYA
+Jl. RAJAWALI 1 KECAMATAN SAMPANG</textarea>
   <select id="invoice_kop_toggle" style="margin-top:6px">
     <option value="off">Kop Invoice OFF</option>
     <option value="on">Kop Invoice ON</option>
@@ -208,7 +213,7 @@ function renderPreview(){
   const terbil = terbilang(totalNum) + ' rupiah';
 
   const kopOn = document.getElementById('kop_toggle')?.value === 'on';
-  const kopHtml = kopOn ? `<div style="text-align:center;font-weight:700;margin-bottom:12px">${escapeHtml(document.getElementById('kop')?.innerText||'')}</div>` : '';
+  const kopHtml = kopOn ? `<div style="text-align:center;margin-bottom:16px"><div style="font-weight:700;font-size:16px;line-height:1.4">CATERING ASIYA</div><div style="font-weight:400;font-size:14px;line-height:1.4">Jl. RAJAWALI 1 KECAMATAN SAMPANG</div></div>` : '';
 
   const html = `
     <div style="max-width:700px;margin:0 auto;position:relative;z-index:1;font-family:system-ui">
@@ -262,7 +267,6 @@ function toggleKop(){ const kop=document.getElementById('kop'); kop.style.displa
 async function exportPDF(){
   const { jsPDF } = window.jspdf;
   const previewEl = document.getElementById('preview');
-  // ensure preview is up-to-date
   renderPreview();
   const canvas = await html2canvas(previewEl, {scale:2,useCORS:true});
   const img = canvas.toDataURL('image/png');
@@ -297,23 +301,20 @@ function printInvoice(){ const date=document.getElementById('invoice_tanggal').v
 const kopText = document.getElementById('kop')?.innerHTML || '';
 const invoiceKopOn = document.getElementById('invoice_kop_toggle')?.value === 'on';
 const invoiceKopText = (document.getElementById('invoice_kop')?.value || '').replace(/\n/g,'<br>');
-const html=`<!doctype html><html><head><meta charset="utf-8"><title>Invoice</title><style>@page{margin:0;}body{font-family:system-ui;margin:20px}table{width:100%;border-collapse:collapse}td,th{border:1px solid #ccc;padding:6px}</style></head><body><div style="display:flex;justify-content:space-between"><div><strong>INVOICE</strong></div><div>No: ${escapeHtml(document.getElementById('no').value||'')}</div></div><div style="margin-top:8px">Tanggal: ${dateText}</div><div style="margin-top:8px">Kepada: ${to}</div><table style="margin-top:12px"><thead><tr><th>No</th><th>Deskripsi</th><th>Qty</th><th>Harga</th><th>Jumlah</th></tr></thead><tbody>${rows}</tbody></table><div style="text-align:right;margin-top:8px;font-weight:700">Subtotal: ${formatRp(subtotal)}</div></body></html>`; const w=window.open('','_blank'); if(!w){ alert('Popup diblokir. Izinkan popup untuk mencetak invoice.'); return; } w.document.open(); w.document.write(html); w.document.close(); w.focus(); setTimeout(()=>{ w.print(); w.close(); },600); }
+const html=`<!doctype html><html><head><meta charset="utf-8"><title>Invoice</title><style>@page{margin:0;}body{font-family:system-ui;margin:20px}table{width:100%;border-collapse:collapse}td,th{border:1px solid #ccc;padding:6px}</style></head><body>${invoiceKopOn?`<div style="text-align:center;font-weight:700;margin-bottom:12px">${invoiceKopText}</div>`:''}${kopOn?`<div style="text-align:center;font-weight:700;margin-bottom:12px">${kopText}</div>`:''}<div style="display:flex;justify-content:space-between"><div><strong>INVOICE</strong></div><div>No: ${escapeHtml(document.getElementById('no').value||'')}</div></div><div style="margin-top:8px">Tanggal: ${dateText}</div><div style="margin-top:8px">Kepada: ${to}</div><table style="margin-top:12px"><thead><tr><th>No</th><th>Deskripsi</th><th>Qty</th><th>Harga</th><th>Jumlah</th></tr></thead><tbody>${rows}</tbody></table><div style="text-align:right;margin-top:8px;font-weight:700">Subtotal: ${formatRp(subtotal)}</div></body></html>`; const w=window.open('','_blank'); if(!w){ alert('Popup diblokir. Izinkan popup untuk mencetak invoice.'); return; } w.document.open(); w.document.write(html); w.document.close(); w.focus(); setTimeout(()=>{ w.print(); w.close(); },600); }
 
-function saveInvoiceToReceipt(){ const inv = { tanggal: document.getElementById('invoice_tanggal').value || '', format: document.getElementById('invoice_date_format').value || 'dd-mm-yyyy', kepada: document.getElementById('invoice_to').value||'', items: Array.from(document.querySelectorAll('#invoice-items-table tbody tr')).map(r=>({desc:r.querySelector('.inv-desc').value, qty:Number(r.querySelector('.inv-qty').value||0), price:Number(r.querySelector('.inv-price').value||0)})) }; // attach to current kwitansi if exists
-  const currentNo = document.getElementById('no').value || null; if(currentNo){ // find receipt by no and attach
+function saveInvoiceToReceipt(){ const inv = { tanggal: document.getElementById('invoice_tanggal').value || '', format: document.getElementById('invoice_date_format').value || 'dd-mm-yyyy', kepada: document.getElementById('invoice_to').value||'', items: Array.from(document.querySelectorAll('#invoice-items-table tbody tr')).map(r=>({desc:r.querySelector('.inv-desc').value, qty:Number(r.querySelector('.inv-qty').value||0), price:Number(r.querySelector('.inv-price').value||0)})) };
+  const currentNo = document.getElementById('no').value || null; if(currentNo){
     const idx = receipts.findIndex(x=>x.no===currentNo);
     if(idx!==-1){ receipts[idx].invoice = inv; saveAll(); alert('Invoice disimpan ke kwitansi.'); return; }
   }
-  // else create a lightweight receipt entry with invoice only
   const rec = { id: Date.now(), no: 'KW-'+Date.now(), tanggal: inv.tanggal, terima_dari: inv.kepada, keterangan: '', metode: 'Tunai', pajak:0, notes:'', items: [], invoice: inv };
   receipts.unshift(rec); saveAll(); alert('Invoice disimpan sebagai entri terpisah.'); }
 
 /* ----------------------- Init ----------------------- */
 document.addEventListener('DOMContentLoaded', ()=>{
-  // load receipts
   receipts = loadReceipts();
   renderList();
-  // init UI
   addItem(); recalc();
   document.getElementById('btn-add-item').addEventListener('click', ()=>addItem());
   document.getElementById('btn-save').addEventListener('click', ()=>saveData());
@@ -325,13 +326,11 @@ document.addEventListener('DOMContentLoaded', ()=>{
   document.getElementById('watermark_text').addEventListener('input', ()=>renderPreview());
   document.getElementById('date_format').addEventListener('change', ()=>renderPreview());
   document.getElementById('kop_toggle').addEventListener('change', ()=>toggleKop());
-  // invoice
   document.getElementById('btn-invoice').addEventListener('click', ()=>openInvoice());
   document.getElementById('invoice-close').addEventListener('click', ()=>closeInvoice());
   document.getElementById('invoice-print').addEventListener('click', ()=>printInvoice());
   document.getElementById('btn-invoice-add-item').addEventListener('click', ()=>invoiceAddRow());
   document.getElementById('invoice-save').addEventListener('click', ()=>saveInvoiceToReceipt());
-  // ensure kop reflects toggle on load
   toggleKop();
 });
 </script>
